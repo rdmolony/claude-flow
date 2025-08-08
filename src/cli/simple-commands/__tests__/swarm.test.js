@@ -3,15 +3,46 @@
  */
 
 import { jest } from '@jest/globals';
-import { swarmCommand } from '../swarm.js';
-import fs from 'fs-extra';
-import path from 'path';
-import { spawn } from 'child_process';
-import ora from 'ora';
 
-jest.mock('fs-extra');
-jest.mock('child_process');
-jest.mock('ora');
+// Mock modules before importing the module under test
+jest.unstable_mockModule('fs-extra', () => ({
+  default: {
+    ensureDir: jest.fn(),
+    writeJson: jest.fn(),
+    pathExists: jest.fn(),
+    readJson: jest.fn(),
+    remove: jest.fn(),
+  },
+  ensureDir: jest.fn(),
+  writeJson: jest.fn(),
+  pathExists: jest.fn(),
+  readJson: jest.fn(),
+  remove: jest.fn(),
+}));
+
+jest.unstable_mockModule('child_process', () => ({
+  spawn: jest.fn(),
+  execSync: jest.fn(),
+}));
+
+jest.unstable_mockModule('ora', () => ({
+  default: jest.fn(() => ({
+    start: jest.fn().mockReturnThis(),
+    succeed: jest.fn().mockReturnThis(),
+    fail: jest.fn().mockReturnThis(),
+    info: jest.fn().mockReturnThis(),
+    warn: jest.fn().mockReturnThis(),
+    text: '',
+  })),
+}));
+
+// Import mocked modules
+const fs = await import('fs-extra');
+const { spawn } = await import('child_process');
+const ora = await import('ora');
+
+// Import the module under test after mocks are set up
+const { swarmCommand } = await import('../swarm.js');
 
 describe('Swarm Command', () => {
   let consoleLogSpy;
@@ -31,7 +62,7 @@ describe('Swarm Command', () => {
       warn: jest.fn().mockReturnThis(),
       text: '',
     };
-    ora.mockReturnValue(mockSpinner);
+    ora.default.mockReturnValue(mockSpinner);
 
     mockSpawnProcess = {
       stdout: { on: jest.fn() },
@@ -50,7 +81,7 @@ describe('Swarm Command', () => {
 
   describe('main swarm command', () => {
     test('should initialize swarm with objective', async () => {
-      const swarmDir = path.join(process.cwd(), '.claude', 'swarm');
+      const swarmDir = process.cwd() + '/.claude/swarm';
       fs.ensureDir.mockResolvedValue(undefined);
       fs.writeJson.mockResolvedValue(undefined);
 
@@ -67,7 +98,7 @@ describe('Swarm Command', () => {
       expect(fs.ensureDir).toHaveBeenCalledWith(swarmDir);
 
       const writeJsonCall = fs.writeJson.mock.calls[0];
-      expect(writeJsonCall[0]).toBe(path.join(swarmDir, 'swarm.json'));
+      expect(writeJsonCall[0]).toBe(swarmDir + '/swarm.json');
       expect(writeJsonCall[1]).toMatchObject({
         objective: 'Build a REST API',
         status: 'initializing',
@@ -209,7 +240,7 @@ describe('Swarm Command', () => {
 
       expect(mockSpinner.succeed).toHaveBeenCalledWith('Swarm stopped successfully');
       expect(fs.remove).toHaveBeenCalledWith(
-        path.join(process.cwd(), '.claude', 'swarm', 'swarm.json'),
+        process.cwd() + '/.claude/swarm/swarm.json',
       );
     });
 
@@ -366,6 +397,27 @@ describe('Swarm Command', () => {
       const output = consoleLogSpy.mock.calls.flat().join('\n');
       expect(output).toContain('Swarm Orchestration');
       expect(output).toContain('USAGE:');
+    });
+  });
+
+  describe('headless environment detection', () => {
+    test('should detect headless environment correctly', async () => {
+      // Save original environment
+      const originalEnv = process.env.CI;
+      
+      // Test CI environment detection
+      process.env.CI = 'true';
+      
+      // Call swarmCommand with headless flag and provide an objective
+      await swarmCommand(['test objective'], { headless: true });
+      
+      // Verify console output contains headless mode message
+      const output = consoleLogSpy.mock.calls.flat().join('\n');
+      expect(output).toContain('non-interactive mode');
+      
+      // Restore
+      if (originalEnv !== undefined) process.env.CI = originalEnv;
+      else delete process.env.CI;
     });
   });
 });

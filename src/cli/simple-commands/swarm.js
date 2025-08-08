@@ -4,7 +4,7 @@
 
 import { args, mkdirAsync, writeTextFile, exit, cwd } from '../node-compat.js';
 import { spawn, execSync } from 'child_process';
-import { existsSync, chmodSync, statSync } from 'fs';
+import { existsSync, chmodSync, statSync, readFileSync } from 'fs';
 import { open } from 'fs/promises';
 import process from 'process';
 import path from 'path';
@@ -31,7 +31,7 @@ function isHeadlessEnvironment() {
   // Check if running in Docker
   const isDocker = existsSync('/.dockerenv') || 
     (existsSync('/proc/1/cgroup') && 
-     require('fs').readFileSync('/proc/1/cgroup', 'utf8').includes('docker'));
+     readFileSync('/proc/1/cgroup', 'utf8').includes('docker'));
   
   // Check TTY availability
   const hasTTY = process.stdin.isTTY && process.stdout.isTTY;
