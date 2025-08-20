@@ -49,6 +49,9 @@ npm install -g @anthropic-ai/claude-code
 claude --dangerously-skip-permissions
 ```
 
+> [!CAUTION]
+> If you run `claude --dangerously-skip-permissions` locally outside of a sandbox (like `Docker`) `claude` will likely be able access any credentials you have locally & may even brick your machine (by editing your drivers) rendering it unusable. Please run it in either a sandbox or in an ephemeral cloud environment (like `GitHub Codespaces`) so that it cannot do so!  
+
 💡 **Windows Note**: If you encounter SQLite errors, Claude Flow will automatically use in-memory storage. For persistent storage options, see our [Windows guide](https://github.com/ruvnet/claude-code-flow/blob/main/docs/windows-installation.md).
 
 ### 🎯 **Instant Alpha Testing**
